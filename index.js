@@ -27,6 +27,7 @@ Multer.prototype._makeMiddleware = function (fields, fileStrategy) {
     var fileFilter = this.fileFilter
     var filesLeft = Object.create(null)
 
+    filesLeft['*'] = Infinity;
     fields.forEach(function (field) {
       if (typeof field.maxCount === 'number') {
         filesLeft[field.name] = field.maxCount
@@ -36,11 +37,14 @@ Multer.prototype._makeMiddleware = function (fields, fileStrategy) {
     })
 
     function wrappedFileFilter (req, file, cb) {
-      if ((filesLeft[file.fieldname] || 0) <= 0) {
+      if (!(file.fieldname in filesLeft)) {
+        filesLeft['*'] -= 1;
+      } else if ((filesLeft[file.fieldname] || 0) <= 0) {
         return cb(new MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname))
+      } else {
+        filesLeft[file.fieldname] -= 1;
       }
 
-      filesLeft[file.fieldname] -= 1
       fileFilter(req, file, cb)
     }
 
